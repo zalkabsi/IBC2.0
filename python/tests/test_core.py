@@ -87,6 +87,34 @@ def test_toml_roundtrip_with_awkward_strings(tmp_path):
     assert tomlio.load(p) == data
 
 
+def test_toml_control_characters_stay_valid(tmp_path):
+    nl, tab, cr = chr(10), chr(9), chr(13)
+    data = {"alerts": {"webhook_url": "https://x/y" + nl, "smtp_password": "a" + tab + "b" + cr + "c" + chr(1)}}
+    p = tmp_path / "t.toml"
+    tomlio.save(p, data)
+    assert tomlio.load(p) == data
+
+
+def test_escape_value_astral_characters_use_surrogate_pairs():
+    bs = chr(92)
+    assert config.escape_value(chr(0x1F600)) == bs + "ud83d" + bs + "ude00"
+
+
+def test_stale_pid_file_is_not_treated_as_running(monkeypatch):
+    import os
+    import time
+
+    from ibc2 import cli
+
+    paths.pid_file().write_text(str(os.getpid()))  # a live PID (ours), but nothing refreshes the state
+    assert cli._supervisor_pid() == os.getpid()  # fresh pid file
+    old = time.time() - 3600
+    os.utime(paths.pid_file(), (old, old))
+    assert cli._supervisor_pid() is None  # stale: the number may have been reused by something else
+    paths.state_file().write_text("{}")  # a supervisor that is really alive keeps refreshing this
+    assert cli._supervisor_pid() == os.getpid()
+
+
 def test_settings_user_file_and_env_override(monkeypatch):
     s = settings.load()
     s["gateway"]["username"] = "fromfile"

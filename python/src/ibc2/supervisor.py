@@ -121,6 +121,7 @@ class Supervisor:
         self._login_alerted = False
         self._reminded_for: datetime | None = None
         self._consecutive_failures = 0
+        self._killed_unhealthy = False
         self.port = launcher.effective_port(settings)
 
     # ---- state ---------------------------------------------------------------------------------
@@ -163,7 +164,6 @@ class Supervisor:
                 self.alerter.send("IBKR session recovered", "Login completed; the session is running again.",
                                   level="info")
             self._problem_alerted = self._unhealthy_alerted = self._login_alerted = False
-            self._consecutive_failures = 0
             self._last_ok = self._now()
             self._set_phase(RUNNING)
         elif kind == "LOGIN_FAILED":
@@ -174,7 +174,7 @@ class Supervisor:
             self.alerter.send("Gateway is showing a window ibc2 does not recognise",
                               f"{detail[:500]}\nIf this blocks the login, add a rule to "
                               f"{paths.dialog_rules_file()} (see the comments in that file).",
-                              level="error", key="unknown-window:" + detail[:60])
+                              level="error", key="unknown-window:" + detail.split(":", 1)[0][:60])
         elif kind == "EXIT":
             self.write_state()
 
@@ -205,6 +205,7 @@ class Supervisor:
         if ok:
             self._last_ok = now
             self._unhealthy_alerted = False
+            self._consecutive_failures = 0  # a working API is the only real proof the last start succeeded
             return True
         down_for = now - self._last_ok
         if down_for > self.sup["health_grace"]:
@@ -215,6 +216,7 @@ class Supervisor:
                                   + (" Restarting." if self.sup["restart_on_unhealthy"] else ""),
                                   level="error", key="api-down")
             if self.sup["restart_on_unhealthy"] and self.proc is not None:
+                self._killed_unhealthy = True
                 launcher.kill_tree(self.proc)
         return False
 
@@ -290,7 +292,7 @@ class Supervisor:
                 self.on_ibc_exit(self.proc.returncode, self._now() - started)
             self.shutdown()
             return 0
-        except (RuntimeError, credentials.CredentialError) as e:
+        except (RuntimeError, OSError, credentials.CredentialError) as e:
             self.alerter.send("ibc2 cannot start", str(e), level="error")
             return 2
         finally:
@@ -301,16 +303,20 @@ class Supervisor:
     def on_ibc_exit(self, code: int | None, ran_for: float) -> None:
         reason = {EXIT_2FA_TIMEOUT: "the second-factor approval timed out",
                   EXIT_LOGIN_DIALOG_TIMEOUT: "the login window never appeared"}.get(code or 0, f"exit code {code}")
-        ran_ok = ran_for > 600 or self.phase == RUNNING
+        # A long run only counts as healthy if the watchdog did not have to kill it: a Gateway that logs
+        # in but never answers must back off, not re-login every few minutes (login throttling).
+        ran_ok = ran_for > 600 and not self._killed_unhealthy
+        self._killed_unhealthy = False
         self._consecutive_failures = 0 if ran_ok else self._consecutive_failures + 1
         backoff = self.sup["backoff"]
-        wait = backoff[min(self._consecutive_failures, len(backoff) - 1)] if self._consecutive_failures else backoff[0]
+        wait = backoff[min(max(self._consecutive_failures, 1) - 1, len(backoff) - 1)]
         tail = "\n".join(list(self.pump.tail)[-8:]) if self.pump else ""
         self.alerter.send("IBC exited; restarting", f"Reason: {reason}. Restarting in {wait}s.\n{tail}"[:1500],
                           level="error" if code else "warning", key=f"exit:{code}")
         self._set_phase(BACKOFF)
         end = self._now() + wait
         while self._now() < end and not self.stop_requested and not paths.stop_flag().exists():
+            self.write_state()  # keeps the state file fresh: 'ibc2 start' treats a stale one as "not running"
             self._sleep(1)
 
     def shutdown(self) -> None:

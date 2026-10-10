@@ -46,7 +46,7 @@ def windows_task_xml(python: str, home: Path, user: str) -> str:
   <Actions Context="Author">
     <Exec>
       <Command>{escape(python)}</Command>
-      <Arguments>-m ibc2 run</Arguments>
+      <Arguments>-m ibc2 run --log-file</Arguments>
       <WorkingDirectory>{escape(str(home))}</WorkingDirectory>
     </Exec>
   </Actions>
@@ -76,7 +76,7 @@ def launchd_plist(python: str, home: Path) -> str:
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>Label</key><string>{LAUNCHD_LABEL}</string>
-  <key>ProgramArguments</key><array><string>{escape(python)}</string><string>-m</string><string>ibc2</string><string>run</string></array>
+  <key>ProgramArguments</key><array><string>{escape(python)}</string><string>-m</string><string>ibc2</string><string>run</string><string>--log-file</string></array>
   <key>EnvironmentVariables</key><dict><key>IBC2_HOME</key><string>{escape(str(home))}</string></dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>

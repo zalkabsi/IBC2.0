@@ -128,13 +128,18 @@ class DialogRules {
         return rules.size();
     }
 
+    /** Text fields and labels: a pop-up's message is usually in a JLabel, which getTexts() ignores. */
+    static String allText(Window window) {
+        return (SwingUtils.getTexts(window) + SwingUtils.NEWLINE + SwingUtils.getLabelTexts(window)).trim();
+    }
+
     /**
      * Called for a window that no handler recognised. Returns true if a rule
      * matched and its button was clicked.
      */
     static boolean tryApply(Window window) {
         String title = SwingUtils.getWindowTitle(window);
-        String text = SwingUtils.getTexts(window);
+        String text = allText(window);
         Rule rule = instance().find(title, text);
         if (rule == null) return false;
         if (SwingUtils.clickButton(window, rule.click)) {

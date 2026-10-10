@@ -29,6 +29,9 @@ def escape_value(value: str) -> str:
             out.append("\\t")
         elif ch == " " and i == 0:
             out.append("\\ ")
+        elif ord(ch) > 0xFFFF:  # Java reads \u escapes as UTF-16 units: write a surrogate pair
+            units = ch.encode("utf-16-be")
+            out.append("".join(f"\\u{int.from_bytes(units[i:i + 2], 'big'):04x}" for i in range(0, 4, 2)))
         elif ord(ch) > 0x7E or ord(ch) < 0x20:
             out.append(f"\\u{ord(ch):04x}")
         else:

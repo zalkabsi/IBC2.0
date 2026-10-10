@@ -143,6 +143,52 @@ def test_exit_2fa_timeout_message_and_backoff_grows():
     assert sv._consecutive_failures == 0
 
 
+def test_backoff_starts_at_first_step_and_grows():
+    sv, rec, _ = make(backoff=[1, 2, 4])
+    sv.pump = None
+    for expected in ("1s", "2s", "4s", "4s"):
+        sv.on_ibc_exit(1, 30)
+        assert f"Restarting in {expected}." in rec.sent[-1][1]
+        rec.sent.clear()
+
+
+def test_watchdog_kill_does_not_reset_backoff():
+    """A Gateway that logs in but never answers must not be re-logged-in at a fixed short interval."""
+    healthy = [False]
+    sv, rec, clock = make(handshake=lambda h, p: healthy[0], backoff=[1, 2, 4], health_grace=60)
+    sv.pump = None
+    sv.proc = type("FakeProc", (), {"pid": 1, "poll": lambda self: None})()
+    waits = []
+    for _ in range(3):
+        sv._set_phase(RUNNING)
+        sv.handle_event({"type": "LOGGED_IN", "detail": ""})  # login succeeds each time...
+        clock.t += 100
+        sup_mod.launcher.kill_tree = lambda p, **k: None
+        sv.check_health()  # ...but the API never answers, so the watchdog kills it
+        sv.on_ibc_exit(1, 4000)  # long run, yet it was killed by the watchdog
+        waits.append(rec.sent[-1][1].split("Restarting in ")[1].split(".")[0])
+        rec.sent.clear()
+    assert waits == ["1s", "2s", "4s"]
+
+
+def test_healthy_api_resets_backoff():
+    sv, rec, _ = make(backoff=[1, 2, 4])
+    sv.pump = None
+    sv.on_ibc_exit(1, 30)
+    sv.on_ibc_exit(1, 30)
+    assert sv._consecutive_failures == 2
+    sv._set_phase(RUNNING)
+    sv.check_health()
+    assert sv._consecutive_failures == 0
+
+
+def test_run_reports_oserror_instead_of_dying_silently(monkeypatch):
+    sv, rec, _ = make()
+    monkeypatch.setattr(sv, "resolve_install", lambda: (_ for _ in ()).throw(FileNotFoundError("bash")))
+    assert sv.run() == 2
+    assert rec.titles() == ["ibc2 cannot start"]
+
+
 # ---- event tail --------------------------------------------------------------------------------
 def test_event_tail_reads_only_new_complete_lines():
     path = paths.events_file()

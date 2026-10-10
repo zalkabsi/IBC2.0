@@ -80,7 +80,10 @@ class TwsListener
         if (eventID != WindowEvent.WINDOW_OPENED) return;
         if (!(window instanceof JDialog || window instanceof JFrame)) return;
         if (DialogRules.tryApply(window)) return;
-        Events.emit(Events.UNKNOWN_WINDOW, SwingUtils.getWindowTitle(window) + ": " + SwingUtils.getTexts(window));
+        // Once logged in, the many windows of the TWS user interface are expected and not worth an alert;
+        // what matters is a window that appears while a login or restart is in progress.
+        if (LoginManager.loginManager().getLoginState() == LoginManager.LoginState.LOGGED_IN) return;
+        Events.emit(Events.UNKNOWN_WINDOW, SwingUtils.getWindowTitle(window) + ": " + DialogRules.allText(window));
     }
 
     private static void getLogStructureParameters() {

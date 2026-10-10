@@ -45,6 +45,15 @@ def _supervisor_pid() -> int | None:
         pid = int(paths.pid_file().read_text().strip())
     except (OSError, ValueError):
         return None
+    # A pid file can outlive its process (crash, docker kill, reboot) and the number can then be reused
+    # by something unrelated. A live supervisor refreshes its state file every few seconds.
+    try:
+        newest = max(paths.state_file().stat().st_mtime if paths.state_file().exists() else 0,
+                     paths.pid_file().stat().st_mtime)
+    except OSError:
+        return None
+    if time.time() - newest > 120:
+        return None
     return pid if _pid_alive(pid) else None
 
 
@@ -134,17 +143,18 @@ def cmd_doctor(_: argparse.Namespace) -> int:
     return 1 if doctor.has_failures(checks) else 0
 
 
-def _prepare_logging() -> None:
-    """When started without a console (scheduled task, service), send our own messages to a file."""
-    if sys.stderr is None or not sys.stderr.isatty():
+def _prepare_logging(force: bool) -> None:
+    """Send our own messages to a file when there is no console to show them (pythonw, a detached
+    process, a scheduled task). Under Docker or systemd stderr is already collected, so leave it alone."""
+    if force or sys.stderr is None:
         log = open(paths.logs_dir() / "ibc2.log", "a", encoding="utf-8", buffering=1)
         sys.stderr = sys.stdout = log
 
 
-def cmd_run(_: argparse.Namespace) -> int:
+def cmd_run(args: argparse.Namespace) -> int:
     from .supervisor import Supervisor
 
-    _prepare_logging()
+    _prepare_logging(args.log_file)
     if _supervisor_pid() not in (None, os.getpid()):
         print("ibc2 is already running (see 'ibc2 status').", file=sys.stderr)
         return 1
@@ -167,7 +177,7 @@ def cmd_start(_: argparse.Namespace) -> int:
                                    | subprocess.CREATE_NO_WINDOW)
     else:
         kwargs["start_new_session"] = True
-    subprocess.Popen([launcher.python_executable(), "-m", "ibc2", "run"], **kwargs)  # noqa: S603
+    subprocess.Popen([launcher.python_executable(), "-m", "ibc2", "run", "--log-file"], **kwargs)  # noqa: S603
     for _i in range(20):
         time.sleep(0.5)
         if _supervisor_pid():
@@ -304,7 +314,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     for name, func, helptext in [
         ("doctor", cmd_doctor, "check your installation and explain any problem"),
-        ("run", cmd_run, "run the supervisor in the foreground"),
         ("start", cmd_start, "run the supervisor in the background"),
         ("stop", cmd_stop, "stop the supervisor and close Gateway/TWS cleanly"),
         ("restart", cmd_restart, "restart Gateway/TWS in place (keeps the session, no new 2FA)"),
@@ -314,6 +323,10 @@ def build_parser() -> argparse.ArgumentParser:
         ("paths", cmd_paths, "show where ibc2 keeps its files"),
     ]:
         sub.add_parser(name, help=helptext).set_defaults(func=func)
+
+    rn = sub.add_parser("run", help="run the supervisor in the foreground")
+    rn.add_argument("--log-file", action="store_true", help="write ibc2's own messages to logs/ibc2.log")
+    rn.set_defaults(func=cmd_run)
 
     st = sub.add_parser("status", help="show whether everything is running")
     st.add_argument("--json", action="store_true")

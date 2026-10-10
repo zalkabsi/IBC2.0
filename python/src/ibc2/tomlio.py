@@ -26,9 +26,17 @@ def _scalar(value: Any) -> str:
         return str(value)
     if isinstance(value, (list, tuple)):
         return "[" + ", ".join(_scalar(v) for v in value) + "]"
-    text = str(value).replace("\\", "\\\\").replace('"', '\\"')
-    text = text.replace("\n", "\n").replace("\r", "\r").replace("\t", "\t")
-    return f'"{text}"'
+    bs = chr(92)
+    named = {"\n": "n", "\r": "r", "\t": "t", '"': '"', bs: bs}
+    out = []
+    for ch in str(value):
+        if ch in named:
+            out.append(bs + named[ch])
+        elif ord(ch) < 0x20 or ord(ch) == 0x7F:
+            out.append(f"{bs}u{ord(ch):04x}")
+        else:
+            out.append(ch)
+    return '"' + "".join(out) + '"'
 
 
 def dumps(data: dict[str, Any]) -> str:

@@ -14,6 +14,8 @@ services:
     image: ibc2:latest
     restart: unless-stopped
     init: true
+    # ibc2 asks Gateway to close cleanly on shutdown (up to ~40s); Docker's default of 10s would kill it mid-way
+    stop_grace_period: 60s
     environment:
       IBC2_USERNAME: ${IBC2_USERNAME:?set IBC2_USERNAME in .env}
       IBC2_MODE: ${IBC2_MODE:-paper}

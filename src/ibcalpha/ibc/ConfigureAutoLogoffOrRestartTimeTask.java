@@ -40,7 +40,7 @@ class ConfigureAutoLogoffOrRestartTimeTask implements ConfigurationAction {
 
     ConfigureAutoLogoffOrRestartTimeTask(String autoActionName, LocalTime autoActionTime) {
         this.autoActionName=autoActionName;
-        this.autoActionTime = autoActionTime.format(DateTimeFormatter.ofPattern("hh:mm a"));
+        this.autoActionTime = autoActionTime.format(DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH));
     }
 
     private static final DateTimeFormatter[] TIME_FORMATS = {
@@ -103,7 +103,7 @@ class ConfigureAutoLogoffOrRestartTimeTask implements ConfigurationAction {
             DateTimeFormatter timeFormatter12Hour = DateTimeFormatter.ofPattern("hh:mm");
             String time = newAutoActionTime.format(timeFormatter12Hour);
 
-            DateTimeFormatter ampmFormatter = DateTimeFormatter.ofPattern("a");
+            DateTimeFormatter ampmFormatter = DateTimeFormatter.ofPattern("a", Locale.ENGLISH);
             String ampm = newAutoActionTime.format(ampmFormatter);
             
             LocalTime currentAutoActionTime = LocalTime.parse(tf.getText() + (am.isSelected() ? " AM" : " PM"), timeFormatter12HourAmPm);
