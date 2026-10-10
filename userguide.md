@@ -255,6 +255,13 @@ website.
 
 ### Where to get IBC
 
+> **This fork (IBC2.0).** The simplest way to get IBC together with a watchdog, alerts and a guided setup
+> is the `ibc2` package: `pip install ibc2` (see the *ibc2* section near the end of this guide), or the
+> Docker image in the `docker` folder of the
+> [repository](https://github.com/zalkabsi/IBC2.0). The ZIP-file route described below still works exactly as
+> before. Release ZIPs for this fork are built with `ant dist`; the original project's releases are at
+> [IbcAlpha/IBC](https://github.com/IbcAlpha/IBC/releases).
+
 IBC is officially distributed as a ZIP file containing the compiled
 program and some additional files, detailed below. There are separate
 ZIP files for Windows, Linux and macOS.
@@ -972,18 +979,75 @@ EXIT
 
 
 
+### ibc2 and the settings added in this fork
+
+#### The `ibc2` package
+
+`ibc2` is a Python program that runs IBC for you and watches over it. Install it with `pip install ibc2`
+and run `ibc2 setup`; it finds your TWS/Gateway, stores your password in the operating system's keyring,
+writes a suitable `config.ini` and checks everything with `ibc2 doctor`. `ibc2 start` runs it in the
+background, `ibc2 install-service` makes it start at every login (Task Scheduler on Windows, systemd on
+Linux, launchd on macOS), and `ibc2 status`, `ibc2 logs`, `ibc2 stop` and `ibc2 restart` manage it.
+While running it:
+
+* checks that the API port really answers the API handshake (not just that the port is open) and restarts a
+  frozen Gateway, waiting longer after each unsuccessful restart so as not to trigger login throttling;
+* alerts you by Telegram, Discord, e-mail or webhook when second factor approval is needed, a login fails,
+  IBC exits, or Gateway shows a window nobody has taught IBC to handle;
+* reminds you before Interactive Brokers' weekly forced re-login (the first login after Sunday 01:00 New
+  York time), which cannot be avoided and which IBC does not try to avoid.
+
+`ibc2` writes the `config.ini` it uses to its own folder (`~/.ibc2`); your existing `config.ini` is not
+touched. It uses the same IBC.jar and scripts described in this guide. For a headless server use the Docker
+image (see `docker/README.md`).
+
+#### New settings in config.ini
+
+**EventLogFile** - if set, IBC appends one JSON object per line to this file whenever something noteworthy
+happens: `TWO_FA_REQUIRED`, `LOGGED_IN`, `LOGIN_FAILED`, `UNKNOWN_WINDOW`, `RULE_APPLIED` and `EXIT`.
+Each line has `time`, `type` and `detail` fields. External tools use this to react; `ibc2` is one. Leave
+it blank to disable. `UNKNOWN_WINDOW` is only reported while a login or restart is in progress, because
+after login the many windows of the TWS user interface are expected.
+
+**DialogRulesFile** - names a file of rules for windows that IBC does not otherwise recognise. Each line is
+
+    title=<regex> ; text=<regex> ; click=<button text>
+
+`title` and the optional `text` are case-insensitive regular expressions matched against the window title
+and against all the text and labels in the window; `click` is the exact text of the button to press. A rule
+fires only for a window no built-in handler claims, so rules cannot interfere with the dialogs IBC already
+handles, and nothing is ever clicked unless a rule asks for it. Use `LogStructureScope=unknown` and
+`LogStructureWhen=open` to see a window's full structure in the log. See `dialogrules.txt` for an example.
+
+**AllowLocalhostOnly** - sets the *Allow connections from localhost only* checkbox in the API settings.
+Use `no` if your API client runs on another machine or in another container. Leave blank to leave the
+setting alone.
+
+#### Changes to existing behaviour
+
+* **AutoRestartTime / AutoLogoffTime** now accept `02:00 PM`, `2:00 pm` and 24-hour `14:00`. Previously
+  a single-digit hour such as `2:00 PM` was silently ignored, so the TWS default (an auto logoff at 11:45 PM
+  local time, which can be during US trading hours outside the US) stayed in force. An invalid value is now
+  reported clearly in the log.
+* **SecondFactorDevice** matching is case-insensitive and also accepts an unambiguous part of the name; when
+  nothing matches, the log lists the devices that are available.
+* The start scripts no longer discard the Java process's error output, so configuration errors reach the log.
+* `StartIBC.bat` finds Java reliably when the current directory is not on the path.
+* The sample `config.ini` no longer contains demonstration credentials.
+
 ### Any Questions?
 
-If you need assistance with running IBC, or have any queries or
-suggestions for improvement, you should join the IBC User Group
-at:
+If you need assistance with running IBC or ibc2, or have any queries or suggestions for improvement, please
+open an issue at:
+
+[https://github.com/zalkabsi/IBC2.0/issues](https://github.com/zalkabsi/IBC2.0/issues)
+
+General IBC questions can also be put to the original project's user group, which is still a useful
+resource:
 
 [https://groups.io/g/ibcalpha](https://groups.io/g/ibcalpha)
 
-If you're convinced you've found a bug in IBC, please report it
-via either the IBC User Group or the GitHub Issue Tracker at:
-
-[https://github.com/IbcAlpha/IBC/issues](https://github.com/IbcAlpha/IBC/issues)
+If you're convinced you've found a bug, please report it via the GitHub issue tracker above.
 
 Please provide as much evidence as you can, especially the versions of
 IBC and TWS/Gateway you're using and a full description of the

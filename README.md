@@ -1,202 +1,140 @@
 # IBC2.0 - always-on Interactive Brokers, one command
 
-This is a maintained fork of [IBC](https://github.com/IbcAlpha/IBC) (retired upstream on 1 September 2026),
-extended so that a TWS / IB Gateway session stays logged in without you:
+[![PyPI](https://img.shields.io/pypi/v/ibc2)](https://pypi.org/project/ibc2/)
+[![CI](https://github.com/zalkabsi/IBC2.0/actions/workflows/ci.yml/badge.svg)](https://github.com/zalkabsi/IBC2.0/actions/workflows/ci.yml)
+[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE.txt)
+
+**IBC2.0 keeps Interactive Brokers TWS / IB Gateway logged in without you.** It is a maintained fork of
+[IBC](https://github.com/IbcAlpha/IBC) (the Java tool that logs in to TWS/Gateway and clicks through its dialogs;
+retired upstream on 1 September 2026) plus **`ibc2`**, a pip-installable supervisor that adds a watchdog, alerts,
+service installation and a Docker image.
 
 ```bash
 pip install ibc2
 ibc2 setup          # finds Gateway/TWS, stores your password in the OS keyring, sets safe defaults
-ibc2 start          # runs in the background; 'ibc2 install-service' starts it at every login
+ibc2 start          # runs in the background
+ibc2 install-service  # optional: start automatically at every login / boot
 ```
 
-or, on a headless server, `docker compose -f docker/docker-compose.yml up -d --build`
-(see [docker/README.md](docker/README.md)).
+On a headless server or VPS use Docker instead:
 
-| Problem algo traders hit | What this fork does |
+```bash
+docker compose -f docker/docker-compose.yml up -d --build
+```
+
+See [python/README.md](python/README.md) for the full `ibc2` command reference and
+[docker/README.md](docker/README.md) for the container.
+
+> **Start with a paper-trading account.** `ibc2 setup` asks you to type `live` before it will use live mode.
+
+## What it fixes
+
+| Problem algo traders hit | What this project does |
 |---|---|
-| Weekly forced 2FA login arrives while you are away | Alerts (Telegram / Discord / e-mail / webhook) when approval is needed and before it is due |
+| The weekly forced 2FA login arrives while you are away | Alerts (Telegram, Discord, e-mail, any webhook) the moment approval is needed, and a reminder hours before it is due |
 | Gateway stalls on a new pop-up IBC has never seen | Detects and reports the window; fix it with a one-line rule in `dialogrules.txt`, no recompiling |
-| `AutoRestartTime=2:00 PM` silently ignored, causing a mid-session logoff | Lenient time parsing; sensible default restart time for your time zone |
-| Wrong 2FA device / passkey chosen | Device matched by name (case-insensitive, partial if unambiguous); lists the devices when none match |
-| Gateway frozen but port still open | Watchdog does a real API handshake and restarts it |
+| `AutoRestartTime=2:00 PM` silently ignored, causing a mid-session logoff | Lenient time parsing, and a default restart time computed for your time zone (01:30 New York) |
+| Wrong 2FA device or passkey chosen | Device matched by name (case-insensitive, partial if unambiguous); lists the available devices when none match |
+| Gateway frozen but its port still open | Watchdog performs a real API handshake and restarts it, backing off if restarts do not help |
 | Config errors disappeared into `/dev/null` | JVM errors now reach the log |
 | Fiddly install, version mismatches, plaintext passwords | `ibc2 setup` / `ibc2 doctor`, OS keyring, Docker image |
 | API client in another container cannot connect | New `AllowLocalhostOnly` setting |
 
-IBKR requires a fresh second-factor login about once a week; **no tool can remove that, and this one does
-not try**. See [python/README.md](python/README.md) for details, security notes and the full command list.
-The original IBC documentation follows unchanged.
+### What no tool can do
 
----
+Interactive Brokers requires a fresh, fully authenticated login (including second factor) about once a week -
+the first login after **Sunday 01:00 New York time**. **That cannot be removed, and this project does not try.**
+What it does is make sure every other disconnect and the nightly restart recover by themselves, and that the
+weekly approval is a 30-second tap on your phone with an alert telling you when, instead of a silent outage.
 
-## PROJECT RETIREMENT
+## Requirements
 
->**This project has been retired, as of 1 September 2026. By 'retired', I mean that
-there will be no further development of IBC, other than completing work in progress
-at that date and fixing any significant newly reported bugs.**
+- An **offline (standalone)** TWS or IB Gateway from Interactive Brokers. IBC does **not** work with the
+  self-updating TWS. (There is no self-updating Gateway, so the normal Gateway installer is fine.)
+  Gateway is recommended for always-on use.
+- Python 3.10+ for `ibc2` (or just Docker). Java is not needed separately: the one bundled with TWS/Gateway is used.
+- Windows, Linux or macOS.
+
+## How it fits together
+
+```
+ ibc2 (Python)          watchdog, alerts, config, service       pip install ibc2
+   |  writes config.ini, launches, reads events.jsonl
+ IBC (Java, this repo)  logs in, handles dialogs, auto-restart  resources/IBC.jar
+   |  runs inside the same JVM as
+ TWS / IB Gateway       your bot talks to its API port          4001/4002 (Gateway), 7496/7497 (TWS)
+```
+
+The Java side was extended to write machine-readable **events** (2FA needed, login ok/failed, unrecognised
+window, exit) to `EventLogFile`; `ibc2` reads them to alert you.
+
+## Project status
+
+- Java: builds on JDK 17; unit tests run with `ant test`.
+- `ibc2`: 47 automated tests on Linux, Windows and macOS (CI). Verified manually against a real TWS 1043 on
+  Windows and a real IB Gateway 1050 in Docker, in both cases up to the login window, using blank credentials.
+- **Not yet verified against a live account:** the 2FA alert flow, dialog rules on a real IBKR pop-up, and
+  alert delivery on each channel. Treat the first week as a trial on a paper account.
+- Release notes: [CHANGELOG.md](CHANGELOG.md).
+
+## Classic IBC usage (without ibc2)
+
+Everything IBC did before still works: the start scripts in [resources](resources), `config.ini`, the
+command server, and so on. See the [IBC User Guide](userguide.md). The settings added in this fork
+(`EventLogFile`, `DialogRulesFile`, `AllowLocalhostOnly`, lenient `AutoRestartTime`) are documented there and
+in [resources/config.ini](resources/config.ini). Existing configurations keep behaving as before.
+
+IBC's original feature list:
+
+* Automatically fills in your username and password in the Login dialog and clicks Login
+* Ensures that, while a session is running, logins from another computer or device do not succeed
+* Participates in Two Factor Authentication using IBKR Mobile, re-prompting so that a missed alert is not fatal
+* Handles the various dialog boxes TWS sometimes displays, to keep things running with no user involvement
+* Allows TWS and Gateway to be auto-restarted each day without re-authenticating
+* Allows TWS and Gateway to be shut down at a specified time every day (or TWS on a given day of the week)
+* Can be remotely told to shut down or restart TWS/Gateway (the command server)
+
+> IBC cannot complete a login by itself if Interactive Brokers have given you a card or device you must use.
+> It can still enter your username and password, but you must supply the code or use the IBKR Mobile app.
 >
->**Nor will IBC be actively supported on this repository.**
-
->See [Discussion 347](https://github.com/IbcAlpha/IBC/discussions/347) for the
->reasons for this. If you have any queries regarding this, or you need to report new
->bugs, please post them on the [IBC User Group](https://groups.io/g/ibcalpha). Please
->do not submit requests for further enhancements to the User Group.
-
->This project repository has been archived. All the repository data is preserved intact,
->but it is read-only: so no new issues, pull requests, discussions or comments can be
->added.
-
->However you can still download releases, and fork the project should you wish to
->carry it forward yourself.
-
->It is intended to produce a final release that clears all outstanding issues.
->This may take some time, and may involve interim releases. 
-
->Thanks to all who have engaged with IBC (and its predecessor IBController) over the past
-> 23 years
-
-<br><br>
-
-**Download the
-[latest official release here](https://github.com/IbcAlpha/IBC/releases/latest)**
-
-IBC automates many aspects of running [Interactive Brokers](https://www.interactivebrokers.com) [Trader Workstation and Gateway](https://www.interactivebrokers.com/en/index.php?f=14099#tws-software)
-that would otherwise involve manual intervention. It's especially useful for
-those who run automated trading systems based on the [Interactive Brokers API](http://interactivebrokers.github.io),
-but many manual traders find it helpful as well.
-
-Here are some of the things it will do for you:
-
-* It automatically fills in your username and password in the Login
-dialog when TWS or Gateway start running, and clicks the Login button
-* It can ensure that while a TWS/Gateway session is running, attempts to
-logon from another computer or device do not succeed
-* It can participate in Two Factor Authentication using IBKR Mobile in such
-a way that users who miss the 2FA alert on their device will automatically
-have further opportunities without needing to be at the computer
-* It handles various dialog boxes which TWS sometimes displays, to keep
-things running smoothly with no user involvement
-* It allows TWS and Gateway to be auto-restarted each day during the week,
-without the user having to re-authenticate
-* It allows TWS and Gateway to be shut down at a specified time every day
-* It allows TWS to be shut down at a specified time on a specified day
-of the week
-* It can be remotely instructed to shut down TWS or Gateway, which can
-be useful if they are running in the cloud or on an inaccessible computer
-
-IBC runs on Windows, macOS and Linux.
-
-> IMPORTANT NOTICES
+> If you are moving from IBController, see the last section of the [User Guide](userguide.md).
 >
-> Please note that IBC cannot automatically complete your login if
-Interactive Brokers have given you a card or device that you must use
-during login. IBC can still enter your username and password, but you
-will have to type in the relevant code, or use the IBKR Mobile app to
-complete the login. You can request Interactive Brokers (via your
-Account Management page on their website) to relax this requirement
-when logging in to TWS or Gateway, but you will lose certain guarantees
-should you suffer losses as a result of your account being compromised.
->
-> If you're moving to IBC from IBController, there are some changes
-that you'll have to make. See the [IBC User Guide](userguide.md) for
-further information.
->
-> No guarantee is given that this repository will be in a fully
-self-consistent state at all times. In particular, if you build IBC.jar
-directly from this repository, you should test thoroughly before
-deploying it (an example of this might be when composing a Docker image).
+> No guarantee is given that this repository is in a fully self-consistent state at every commit. If you build
+> `IBC.jar` yourself, test thoroughly before deploying it (for example in a Docker image).
 
+## Building from source
 
-Downloads
----------
+```bash
+export IBC_BIN=/path/to/Jts/<version>/jars     # any TWS/Gateway jars folder; only needed to compile
+ant test jar                                   # Java tests, then resources/IBC.jar
+cd python && python build_assets.py && pip install -e ".[test]" && pytest
+```
 
-If you just want to use IBC without modifying it, you should download
-the latest official release ZIP which you can find
-[here](https://github.com/IbcAlpha/IBC/releases/latest). Note that
-there are separate release files for Windows, macOS and Linux.
+Details are in [CONTRIBUTING.md](CONTRIBUTING.md); releases are described in
+[python/RELEASING.md](python/RELEASING.md).
 
-Users who want to make changes to IBC should clone this repository
-in the usual way.
+## Support
 
-User Guide
-----------
+Please open an issue on [this repository](https://github.com/zalkabsi/IBC2.0/issues). Attach the IBC log
+(`ibc2 logs`, or `~/.ibc2/logs`), and say which IBC/`ibc2` and TWS/Gateway versions you use and what you
+expected to happen. The original project's archive remains at [IbcAlpha/IBC](https://github.com/IbcAlpha/IBC),
+and its [user group](https://groups.io/g/ibcalpha) is still a useful resource for general IBC questions.
 
-Please see the [IBC User Guide](userguide.md) for installation and
-usage instructions. The User Guide is also included as a PDF file in the
-download ZIPs.
+## Contributing
 
-Support
--------
+Pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-> IMPORTANT
-> By far the most common problem that users have when setting up IBC
-is the result of trying to use it with the self-updating version of TWS.
->
->**IBC DOES NOT WORK with the self-updating version of TWS.**
->
->You must install the offline version of TWS for use with IBC.
->
->Note however that there is no self-updating version of the Gateway, so the
-normal Gateway installer will work fine if you only want to use the Gateway.
+## License and credits
 
-If you need assistance with running IBC, or have any queries or suggestions
-for improvement, you should join the [IBC User Group](https://groups.io/g/ibcalpha).
+IBC is licensed under the [GNU General Public License](LICENSE.txt) version 3 or later, and so is this fork.
+It is an independent fork and is not affiliated with or endorsed by Interactive Brokers.
 
-If you're convinced you've found a bug in IBC, please report it via either
-the
-[IBC User Group](https://groups.io/g/ibcalpha) or the
-[GitHub Issue Tracker](https://github.com/IbcAlpha/IBC/issues).
-Please provide as much evidence as you can, especially the versions of IBC
-and TWS/Gateway you're using and a full description of the incorrect
-behaviour you're seeing.
+Credit to everyone who built what this stands on: Richard L King and the IBC contributors, and the
+predecessor [IBController](https://github.com/ib-controller/ib-controller) (Richard King, Steven Kearns,
+Ken Geis, Ben Alex and Shane Castle).
 
-Note that IBC creates a log file that records a lot of useful information
-that can be very helpful in diagnosing users' problems. The location of
-this log file is prominently displayed in the window that appears when you
-run IBC. Please attach this log file to any problem reports.
+### History
 
-Contributing
-------------
-
-There are several ways you may be able to contribute to IBC's ongoing
-development and support. Please read the
-[contributor guidelines](CONTRIBUTING.md), and send us a
-[pull request](../../pulls).
-
-We also thank past contributors to the IBController project from which
-IBC was forked: Richard King, Steven Kearns, Ken Geis, Ben Alex and
-Shane Castle.
-
-License
--------
-
-IBC is licensed under the
-[GNU General Public License](http://www.gnu.org/licenses/gpl.html) version 3.
-
-History
--------
-
-A brief note by Richard L King (rlktradewright on GitHub) updated
-5 April 2019.
-
-IBC is a fork of the original
-[IBController project](https://github.com/ib-controller/ib-controller).
-For many years, from 2004 to early 2018, I was the primary
-maintainer, developer and supporter for that project.
-
-For reasons beyond my control, in early 2018 I decided to withdraw my direct
-support for the original project, and to create this fork. It is my intention
-to ensure that this fork continues to be developed and supported to the high
-standards of the past.
-
-The status of the original IBController repository now seems unclear, so
-IBController users are invited to switch to IBC.
-
-If you switch from IBController to IBC, please note that there are some
-significant differences, and it's best to install IBC from scratch using
-the download on the [Releases page](https://github.com/IbcAlpha/IBC/releases).
-The last section of the [IBC User Guide](userguide.md) contains useful
-information about these differences.
-
-
-
+IBC is a fork of IBController, created in early 2018 by Richard L King, who had been that project's
+primary maintainer since 2004. IBC was retired upstream on 1 September 2026 with the wish that others
+could carry it forward; this repository does so.

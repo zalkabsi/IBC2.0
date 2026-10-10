@@ -1,5 +1,8 @@
 # ibc2
 
+[![PyPI](https://img.shields.io/pypi/v/ibc2)](https://pypi.org/project/ibc2/)
+[![CI](https://github.com/zalkabsi/IBC2.0/actions/workflows/ci.yml/badge.svg)](https://github.com/zalkabsi/IBC2.0/actions/workflows/ci.yml)
+
 **One command to keep Interactive Brokers Gateway / TWS logged in, always on.**
 
 `ibc2` wraps [IBC](https://github.com/IbcAlpha/IBC) (the Java tool that logs in to TWS / IB Gateway and
@@ -83,6 +86,23 @@ Rules only apply to windows IBC does not already handle.
 
 See [`docker/README.md`](../docker/README.md) in the repository: `docker compose up` gives you a headless
 Gateway under Xvfb with the watchdog and alerts, configured by environment variables / secrets.
+
+## Troubleshooting
+
+Run `ibc2 doctor` first; it checks each item below.
+
+| Symptom | Likely cause and fix |
+|---|---|
+| "No offline installation found" | IBC does not work with the self-updating TWS. Install the offline/standalone IB Gateway (or offline TWS). |
+| Login window stays empty / nothing happens | Run `ibc2 logs -f`. If a window titled something unexpected is reported, add a rule to `~/.ibc2/dialogrules.txt`. |
+| Alert "Approve the IBKR login now" | IBKR wants your second factor. Open the IBKR Mobile app and approve. This is expected about once a week. |
+| "Second factor device not found" | Set `second_factor_device` in `ibc2.toml` to a name from the list printed in the log (partial names work if unambiguous). |
+| "API port closed" | Gateway is not running yet or the API is disabled. Gateway uses 4001 (live) / 4002 (paper), TWS 7496 / 7497; `api_port` overrides. |
+| Bot in another container/machine cannot connect | Set `allow_remote_clients = true` (Docker does this for you) and publish the port deliberately; the IB API is unencrypted. |
+| Gateway restarts in the middle of the US session | Check `auto_restart_time`; the default is 01:30 New York time converted to your local time. |
+| Keyring error on a headless Linux box | No keyring service exists; use `IBC2_PASSWORD_FILE` (a file containing the password) instead. |
+
+Logs: `ibc2 logs`, or the files in `~/.ibc2/logs` (`ibc2.log` is the supervisor, `ibc-YYYYMMDD.log` is IBC).
 
 ## Security notes
 

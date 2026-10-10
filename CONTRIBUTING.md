@@ -1,9 +1,10 @@
-You are welcome to contribute to IBC. Here are some of the ways you can help:
+You are welcome to contribute to IBC2.0. Here are some of the ways you can help:
 
 - correct mistakes or improve the quality of documentation: for example
   the User Guide or any of the text in the repository
 
-- contribute to the [IBC User Group](https://groups.io/g/IBC)
+- report problems, with the log attached, at
+  [the issue tracker](https://github.com/zalkabsi/IBC2.0/issues)
 
 - suggest ways to make IBC better or more useful
 
@@ -17,20 +18,21 @@ otherwise require manual intervention at runtime. Note the following:
 - IBC is *not* a tool for configuring TWS: the user must configure the TWS
   settings as required through the means provided in TWS.
 
-- IBC is *not* a management mechanism for TWS, so it cannot be extended to
-  provide for such things as restarting TWS after a failure. IBC and TWS run
-  in the same process, and if one exits so does the other.
+- The Java part of IBC is *not* a management mechanism for TWS, so it cannot be
+  extended to provide for such things as restarting TWS after a failure. IBC and
+  TWS run in the same process, and if one exits so does the other. Anything that
+  has to live outside that process - the watchdog, restarts, alerts, service
+  installation, the Docker image - belongs in the `ibc2` Python package
+  (`python/`), not in the Java code.
 
 You may find the following guidelines helpful before starting work on a
 contribution to the project:
 
 1. **Discuss it first**: it's wise to raise an issue on the
-   [GitHub repository](https://github.com/ibcalpha/ibc) explaining what you
-   propose to do. There may be reasons why your proposed change is unlikely
-   to be accepted, or someone else may already be working on something
-   similar, or it may even have been proposed and rejected before. You can
-   also discuss suggestions for improvement on the
-   [IBC User Group](https://groups.io/g/IBC).
+   [GitHub repository](https://github.com/zalkabsi/IBC2.0/issues) explaining
+   what you propose to do. There may be reasons why your proposed change is
+   unlikely to be accepted, or someone else may already be working on something
+   similar, or it may even have been proposed and rejected before.
 
 2. **Cross-platform**: in general changes must work on all supported
    platforms. In particular the Java source code should be cross-platform.
@@ -61,7 +63,7 @@ contribution to the project:
 
 7. **Style**: please maintain the same style as the existing code unless
    you've discussed a refactor with the current maintainers via email or a
-   GitHub [Issue](https://github.com/IbcAlpha/IBC/issues)
+   GitHub [Issue](https://github.com/zalkabsi/IBC2.0/issues)
 
 How to build IBC
 ================
@@ -89,6 +91,29 @@ shell you're using you may be able to prefix the command with setting the
 environment variable on the same line. However it's probably still
 preferable to set this permanently, rather than type it out each time you
 build.
+
+Running the tests
+-----------------
+
+`ant test` compiles IBC and runs the dependency-free Java tests in `test/`.
+For the Python package:
+
+```
+cd python
+python build_assets.py            # assembles src/ibc2/_ibc from ../resources (run 'ant jar' first)
+pip install -e ".[test]"
+pytest
+```
+
+CI runs both on Linux, Windows and macOS for every push and pull request. When you
+change behaviour, add a test. Things to keep in mind:
+
+- IBC reads `config.ini` with `java.util.Properties`: backslashes are escapes and the
+  file is read as ISO-8859-1. Anything that writes a config value must escape it
+  (see `ibc2.config.escape_value`).
+- Shell scripts must keep LF line endings (`.gitattributes` enforces this).
+- Never test with real credentials. A blank-credentials launch leaves IBC waiting at the
+  login window, which is enough to check that start-up works.
 
 Note that the `ver` property in the [build.xml](build.xml) is used in
 generating the file names for the distribution ZIP files, and is also put
