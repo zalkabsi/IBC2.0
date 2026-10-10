@@ -51,7 +51,7 @@ contribution to the project:
 5. **Backward compatibility**: new versions should not force users of previous
    versions to change their configuration or script files (ie no surprises),
    unless this is absolutely essential. Obviously it may be necessary to
-   introduce new settings into the [configuration file](resources/IBC.ini)
+   introduce new settings into the [configuration file](resources/config.ini)
    or enhance the script files, but this should be done in such a way that
    if a user moves to the new version of IBC without making any changes
    their TWS/Gateway will continue to operate exactly as before.
