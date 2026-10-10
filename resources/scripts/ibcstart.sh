@@ -524,13 +524,13 @@ do
 	trap 'kill -TERM $PID' TERM INT
 
 	if [[ -n $got_fix_credentials && -n $got_api_credentials ]]; then
-		"$java_path/java" $extra_java_options -cp "$ibc_classpath" $java_vm_options$autorestart_option $entry_point "$ibc_ini" "$fix_user_id" "$fix_password" "$ib_user_id" "$ib_password" ${mode} 2>/dev/null &
+		"$java_path/java" $extra_java_options -cp "$ibc_classpath" $java_vm_options$autorestart_option $entry_point "$ibc_ini" "$fix_user_id" "$fix_password" "$ib_user_id" "$ib_password" ${mode} 2>&1 &
 	elif  [[ -n $got_fix_credentials ]]; then
-		"$java_path/java" $extra_java_options -cp "$ibc_classpath" $java_vm_options$autorestart_option $entry_point "$ibc_ini" "$fix_user_id" "$fix_password" ${mode} 2>/dev/null &
+		"$java_path/java" $extra_java_options -cp "$ibc_classpath" $java_vm_options$autorestart_option $entry_point "$ibc_ini" "$fix_user_id" "$fix_password" ${mode} 2>&1 &
 	elif [[ -n $got_api_credentials ]]; then
-		"$java_path/java" $extra_java_options -cp "$ibc_classpath" $java_vm_options$autorestart_option $entry_point "$ibc_ini" "$ib_user_id" "$ib_password" ${mode} 2>/dev/null &
+		"$java_path/java" $extra_java_options -cp "$ibc_classpath" $java_vm_options$autorestart_option $entry_point "$ibc_ini" "$ib_user_id" "$ib_password" ${mode} 2>&1 &
 	else
-		"$java_path/java" $extra_java_options -cp "$ibc_classpath" $java_vm_options$autorestart_option $entry_point "$ibc_ini" ${mode} 2>/dev/null &
+		"$java_path/java" $extra_java_options -cp "$ibc_classpath" $java_vm_options$autorestart_option $entry_point "$ibc_ini" ${mode} 2>&1 &
 	fi
 
 	PID=$!

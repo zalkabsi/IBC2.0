@@ -83,6 +83,7 @@ public abstract class LoginManager {
         if (null != loginState) switch (loginState) {
             case TWO_FA_IN_PROGRESS:
                 Utils.logToConsole("Second Factor Authentication initiated");
+                Events.emit(Events.TWO_FA_REQUIRED, "Second Factor Authentication initiated");
                 if (LoginStartTime == null) LoginStartTime = Instant.now();
                 break;
             case LOGGING_IN:
@@ -90,6 +91,7 @@ public abstract class LoginManager {
                 break;
             case LOGGED_IN:
                 Utils.logToConsole("Login has completed");
+                Events.emit(Events.LOGGED_IN, "Login has completed");
                 if (shutdownAfterTimeTask != null) {
                     shutdownAfterTimeTask.cancel(false);
                     shutdownAfterTimeTask = null;

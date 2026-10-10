@@ -534,6 +534,7 @@ public class IbcTws {
         configureApiPort();
         configureMasterClientID();
         configureReadOnlyApi();
+        configureAllowLocalhostOnly();
         configureSendMarketDataInLotsForUSstocks();
         configureAutoLogoffOrRestart();
         configureApiPrecautions();
@@ -607,6 +608,17 @@ public class IbcTws {
         }
     }
     
+    private static void configureAllowLocalhostOnly() {
+        String configName = "AllowLocalhostOnly";
+        if (!Settings.settings().getString(configName, "").equals("")) {
+            if (SessionManager.isFIX()){
+                Utils.logToConsole(configName + " - ignored for FIX");
+                return;
+            }
+            (new ConfigurationTask(new ConfigureAllowLocalhostOnlyTask(Settings.settings().getBoolean(configName, true)))).executeAsync();
+        }
+    }
+
     private static void configureSendMarketDataInLotsForUSstocks(){
         String configName = "SendMarketDataInLotsForUSstocks";
         String sendMarketDataInLots = Settings.settings().getString(configName, "");

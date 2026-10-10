@@ -103,18 +103,38 @@ public class SecondFactorAuthenticationDialogHandler implements WindowHandler {
         }
 
         ListModel<?> model = deviceList.getModel();
+        StringBuilder available = new StringBuilder();
+        int exact = -1;
+        int caseInsensitive = -1;
+        int contains = -1;
+        int containsCount = 0;
+        final String wanted = secondFactorDevice.trim().toLowerCase();
         for (int i = 0; i < model.getSize(); i++) {
             String entry = model.getElementAt(i).toString().trim();
+            available.append(available.length() == 0 ? "" : ", ").append("'").append(entry).append("'");
             if (entry.equals(secondFactorDevice)) {
-                deviceList.setSelectedIndex(i);
-
-                if (!SwingUtils.clickButton(window, "OK")) {
-                    Utils.logError("could not select second factor device: OK button not found");
-                }
-                return;
+                exact = i;
+            } else if (entry.equalsIgnoreCase(secondFactorDevice.trim())) {
+                if (caseInsensitive < 0) caseInsensitive = i;
+            } else if (entry.toLowerCase().contains(wanted)) {
+                contains = i;
+                containsCount++;
             }
         }
-        Utils.logError("could not find second factor device '" + secondFactorDevice + "' in the list");
+
+        // prefer an exact match, then a case-insensitive one, then a partial
+        // match - but only if the partial match is unambiguous
+        int chosen = exact >= 0 ? exact : caseInsensitive >= 0 ? caseInsensitive : containsCount == 1 ? contains : -1;
+        if (chosen >= 0) {
+            deviceList.setSelectedIndex(chosen);
+            Utils.logToConsole("Selected second factor device: " + model.getElementAt(chosen).toString().trim());
+            if (!SwingUtils.clickButton(window, "OK")) {
+                Utils.logError("could not select second factor device: OK button not found");
+            }
+            return;
+        }
+        Utils.logError("could not find second factor device '" + secondFactorDevice + "' in the list. Available devices: " + available);
+        Events.emit(Events.LOGIN_FAILED, "second factor device '" + secondFactorDevice + "' not found; available: " + available);
     }
     
 }

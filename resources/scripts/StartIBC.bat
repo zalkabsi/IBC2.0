@@ -473,7 +473,7 @@ echo.
 
 :: temporarily change the current working directory because using "%JAVA_PATH%\java.exe" in the following 'for' statement causes an error
 pushd "%JAVA_PATH%"
-for /f "tokens=1,2 delims== usebackq" %%A in (`java.exe -XshowSettings:properties 2^>^&1 ^| findstr /C:"java.version ="`) do set JAVA_VERSION=%%B
+for /f "tokens=1,2 delims== usebackq" %%A in (`.\java.exe -XshowSettings:properties 2^>^&1 ^| findstr /C:"java.version ="`) do set JAVA_VERSION=%%B
 :: restore the original current working directory
 popd
 
@@ -486,14 +486,14 @@ echo.
 
 if defined GOT_FIX_CREDENTIALS (
 	if defined GOT_API_CREDENTIALS (
-		"%JAVA_PATH%\java.exe" %EXTRA_JAVA_OPTIONS% -cp  "%IBC_CLASSPATH%" %JAVA_VM_OPTIONS% %AUTORESTART_OPTION% %ENTRY_POINT% "%CONFIG%" "%FIX_USER_ID%" "%FIX_PASSWORD%" "%IB_USER_ID%" "%IB_PASSWORD%" %MODE% 2>NUL
+		"%JAVA_PATH%\java.exe" %EXTRA_JAVA_OPTIONS% -cp  "%IBC_CLASSPATH%" %JAVA_VM_OPTIONS% %AUTORESTART_OPTION% %ENTRY_POINT% "%CONFIG%" "%FIX_USER_ID%" "%FIX_PASSWORD%" "%IB_USER_ID%" "%IB_PASSWORD%" %MODE% 2>&1
 	) else (
-		"%JAVA_PATH%\java.exe" %EXTRA_JAVA_OPTIONS% -cp  "%IBC_CLASSPATH%" %JAVA_VM_OPTIONS% %AUTORESTART_OPTION% %ENTRY_POINT% "%CONFIG%" "%FIX_USER_ID%" "%FIX_PASSWORD%" %MODE% 2>NUL
+		"%JAVA_PATH%\java.exe" %EXTRA_JAVA_OPTIONS% -cp  "%IBC_CLASSPATH%" %JAVA_VM_OPTIONS% %AUTORESTART_OPTION% %ENTRY_POINT% "%CONFIG%" "%FIX_USER_ID%" "%FIX_PASSWORD%" %MODE% 2>&1
 	)
 ) else if defined GOT_API_CREDENTIALS (
-		"%JAVA_PATH%\java.exe" %EXTRA_JAVA_OPTIONS% -cp  "%IBC_CLASSPATH%" %JAVA_VM_OPTIONS% %AUTORESTART_OPTION% %ENTRY_POINT% "%CONFIG%" "%IB_USER_ID%" "%IB_PASSWORD%" %MODE% 2>NUL
+		"%JAVA_PATH%\java.exe" %EXTRA_JAVA_OPTIONS% -cp  "%IBC_CLASSPATH%" %JAVA_VM_OPTIONS% %AUTORESTART_OPTION% %ENTRY_POINT% "%CONFIG%" "%IB_USER_ID%" "%IB_PASSWORD%" %MODE% 2>&1
 ) else (
-		"%JAVA_PATH%\java.exe" %EXTRA_JAVA_OPTIONS% -cp  "%IBC_CLASSPATH%" %JAVA_VM_OPTIONS% %AUTORESTART_OPTION% %ENTRY_POINT% "%CONFIG%" %MODE% 2>NUL
+		"%JAVA_PATH%\java.exe" %EXTRA_JAVA_OPTIONS% -cp  "%IBC_CLASSPATH%" %JAVA_VM_OPTIONS% %AUTORESTART_OPTION% %ENTRY_POINT% "%CONFIG%" %MODE% 2>&1
 )
 
 ::======================== Handle IBC exit conditions ==============

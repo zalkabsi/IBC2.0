@@ -1,0 +1,24 @@
+# IBC dialog rules
+# ----------------
+#
+# Each line describes one rule for a window that IBC does NOT otherwise
+# recognise:
+#
+#     title=<regex> ; text=<regex> ; click=<button text>
+#
+#   title  regular expression (case-insensitive) matched against the window title
+#   text   optional regular expression matched against all the text in the window
+#   click  the exact text of the button to press
+#
+# Rules are only consulted for unrecognised windows, so they cannot interfere
+# with the dialogs IBC already handles. Lines starting with # are comments.
+# (The ';' character separates the parts, so don't use it inside a regex.)
+#
+# To find a window's title, text and buttons, look for lines such as
+#   detected dialog entitled: Gateway; event=Opened
+# in the IBC log, and set LogStructureScope=unknown and LogStructureWhen=open
+# in config.ini to have IBC print the window's full structure.
+#
+# Example (promotional pop-up at the Gateway login screen, issue #382):
+#
+# title=^Gateway$ ; text=Prediction Markets ; click=Close

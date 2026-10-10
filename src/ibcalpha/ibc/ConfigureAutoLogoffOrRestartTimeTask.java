@@ -22,6 +22,7 @@ import java.awt.Container;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Locale;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JRadioButton;
@@ -42,6 +43,30 @@ class ConfigureAutoLogoffOrRestartTimeTask implements ConfigurationAction {
         this.autoActionTime = autoActionTime.format(DateTimeFormatter.ofPattern("hh:mm a"));
     }
 
+    private static final DateTimeFormatter[] TIME_FORMATS = {
+        DateTimeFormatter.ofPattern("h:mm a", Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("h:mma", Locale.ENGLISH),
+        DateTimeFormatter.ofPattern("H:mm", Locale.ENGLISH)
+    };
+
+    /**
+     * Parses a time of day leniently: 12-hour with or without a leading zero
+     * and in any letter case ("2:00 pm", "02:00 PM"), or 24-hour ("14:00").
+     * Returns null if the text cannot be understood.
+     */
+    static LocalTime parseTime(String text) {
+        if (text == null) return null;
+        String t = text.trim().replaceAll("\\s+", " ").toUpperCase(Locale.ENGLISH);
+        for (DateTimeFormatter f : TIME_FORMATS) {
+            try {
+                return LocalTime.parse(t, f);
+            } catch (DateTimeParseException e) {
+                // try the next format
+            }
+        }
+        return null;
+    }
+
     @Override
     public void initialise(JDialog configDialog) {
         this.configDialog = configDialog;
@@ -52,13 +77,11 @@ class ConfigureAutoLogoffOrRestartTimeTask implements ConfigurationAction {
         try {
             Utils.logToConsole("Setting " + autoActionName  + " time");
             
-            DateTimeFormatter timeFormatter12HourAmPm = DateTimeFormatter.ofPattern("hh:mm a");
+            DateTimeFormatter timeFormatter12HourAmPm = DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH);
 
-            LocalTime newAutoActionTime;
-            try {
-                newAutoActionTime = LocalTime.parse(autoActionTime, timeFormatter12HourAmPm);
-            } catch (DateTimeParseException e) {
-                throw new IbcException(autoActionName + " time setting must be hh:mm AM or hh:mm PM, for example \"09:30 AM\" or \"04:00 PM\"");
+            LocalTime newAutoActionTime = parseTime(autoActionTime);
+            if (newAutoActionTime == null) {
+                throw new IbcException(autoActionName + " time setting '" + autoActionTime + "' is not valid: it must be like \"09:30 AM\", \"2:00 PM\" or \"14:00\"");
             }
 
             Utils.selectConfigSection(configDialog, new String[] {"Lock and Exit"});

@@ -38,6 +38,7 @@ public class LoginFailedDialogHandler implements WindowHandler  {
     @Override
     public void handleWindow(Window window, int eventID) {
         Utils.logToConsole("Login failed");
+        Events.emit(Events.LOGIN_FAILED, SwingUtils.getTexts(window));
         Utils.logToConsole("Cold restart in progress");
         // stop tidily and do a cold restart
         MyCachedThreadPool.getInstance().execute(new StopTask(null, true, "Cold restart after Login Failed dialog encountered"));

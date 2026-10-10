@@ -40,6 +40,23 @@ public class IbcVersionInfo {
         </javac>
     </target>
 
+    <target name="test" depends="compile" description="compile and run the unit tests">
+        <mkdir dir="${target}/test-classes"/>
+        <javac srcdir="test" destdir="${target}/test-classes" release="17" includeantruntime="false">
+            <classpath>
+                <pathelement location="${target}/classes"/>
+                <path refid="external.classpath"/>
+            </classpath>
+        </javac>
+        <java classname="ibcalpha.ibc.CoreTests" fork="true" failonerror="true">
+            <classpath>
+                <pathelement location="${target}/test-classes"/>
+                <pathelement location="${target}/classes"/>
+                <path refid="external.classpath"/>
+            </classpath>
+        </java>
+    </target>
+
     <target name="jar" depends="compile" description="generate the jar">
         <jar jarfile="${resources}/IBC.jar" basedir="${target}/classes"/>
     </target>

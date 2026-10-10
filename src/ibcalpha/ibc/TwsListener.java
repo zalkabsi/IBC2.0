@@ -60,6 +60,7 @@ class TwsListener
                     }
 
                     logWindowStructure(window, eventID, false);
+                    handleUnrecognisedWindow(window, eventID);
                 } catch (Throwable e) {
                     Utils.exitWithException(ErrorCodes.UNHANDLED_EXCEPTION, e);
                 }
@@ -69,6 +70,19 @@ class TwsListener
         }
     }
     
+    /**
+     * No built-in handler recognised this window. Apply any user-defined dialog
+     * rule; failing that, record the window in the event log (together with its
+     * structure) so that a supervisor can alert the user instead of the session
+     * silently stalling on it.
+     */
+    private static void handleUnrecognisedWindow(Window window, int eventID) {
+        if (eventID != WindowEvent.WINDOW_OPENED) return;
+        if (!(window instanceof JDialog || window instanceof JFrame)) return;
+        if (DialogRules.tryApply(window)) return;
+        Events.emit(Events.UNKNOWN_WINDOW, SwingUtils.getWindowTitle(window) + ": " + SwingUtils.getTexts(window));
+    }
+
     private static void getLogStructureParameters() {
         // legacy deprecated setting overrides explicit values of LogStructureScope 
         // and LogStructureWhen
