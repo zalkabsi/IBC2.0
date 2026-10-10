@@ -311,7 +311,8 @@ def test_send_command_skips_greeting_and_prompt():
 
 
 # ---- install detection -----------------------------------------------------------------------------
-def test_find_installs(tmp_path):
+def test_find_installs(tmp_path, monkeypatch):
+    monkeypatch.setattr(detect.platform, "system", lambda: "Linux")  # this test describes the Linux/Windows layout
     (tmp_path / "1043" / "jars").mkdir(parents=True)
     (tmp_path / "ibgateway" / "1045" / "jars").mkdir(parents=True)
     (tmp_path / "1030").mkdir()  # no jars: the self-updating layout, must be ignored
@@ -333,3 +334,11 @@ def test_windows_task_xml_is_valid_and_escaped(tmp_path):
 def test_systemd_unit_restarts_always(tmp_path):
     unit = service.systemd_unit("/usr/bin/python3", tmp_path)
     assert "Restart=always" in unit and "-m ibc2 run" in unit
+
+
+def test_find_installs_macos_layout(tmp_path, monkeypatch):
+    monkeypatch.setattr(detect.platform, "system", lambda: "Darwin")
+    (tmp_path / "IB Gateway 1050").mkdir()
+    (tmp_path / "Trader Workstation 1043").mkdir()
+    found = detect.find_installs([tmp_path])
+    assert [(i.app, i.version) for i in found] == [("gateway", "1050"), ("tws", "1043")]
