@@ -34,7 +34,14 @@ def main() -> None:
     shutil.copy2(args.jar, TARGET / "IBC.jar")
     for name in SCRIPTS:
         src = RESOURCES / "scripts" / name
-        if src.exists():
+        if not src.exists():
+            continue
+        if name.endswith(".sh"):
+            # shell scripts must have LF endings or they fail on Linux/macOS, even when this
+            # wheel is built from a Windows checkout that converted them to CRLF
+            data = src.read_bytes().replace(b"\r\n", b"\n")
+            (TARGET / "scripts" / name).write_bytes(data)
+        else:
             shutil.copy2(src, TARGET / "scripts" / name)
     for name in ("config.ini", "dialogrules.txt", "version"):
         shutil.copy2(RESOURCES / name, TARGET / name)

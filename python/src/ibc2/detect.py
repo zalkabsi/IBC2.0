@@ -31,7 +31,11 @@ def default_roots() -> list[Path]:
         roots += [Path.home() / "Applications", Path("/Applications")]
     else:
         roots += [Path.home() / "Jts", Path("/opt/ibgateway"), Path("/opt/Jts")]
-    return [r for r in roots if r.exists()]
+    unique: list[Path] = []
+    for r in roots:
+        if r.exists() and r not in unique:
+            unique.append(r)
+    return unique
 
 
 _VERSION = re.compile(r"^\d{3,5}$")

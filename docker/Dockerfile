@@ -59,7 +59,10 @@ COPY --from=build /dist/*.whl /tmp/
 RUN python3 -m venv /opt/venv && /opt/venv/bin/pip install --no-cache-dir /tmp/*.whl && rm /tmp/*.whl
 
 COPY docker/entrypoint.sh /usr/local/bin/ibc2-entrypoint
-RUN chmod +x /usr/local/bin/ibc2-entrypoint
+# strip any CR characters (a Windows checkout may have added them) and prepare the X11 socket dir for Xvfb
+RUN tr -d '\015' < /usr/local/bin/ibc2-entrypoint > /tmp/entry && mv /tmp/entry /usr/local/bin/ibc2-entrypoint \
+    && chmod +x /usr/local/bin/ibc2-entrypoint \
+    && mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix
 
 USER ibc2
 ENV PATH="/opt/venv/bin:$PATH" \
