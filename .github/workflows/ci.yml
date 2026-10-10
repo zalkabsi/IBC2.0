@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  java:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Fetch IB Gateway jars (needed only to compile)
+        run: |
+          curl -fsSL https://download2.interactivebrokers.com/installers/ibgateway/stable-standalone/ibgateway-stable-standalone-linux-x64.sh -o gw.sh
+          chmod +x gw.sh
+          ./gw.sh -q -dir "$RUNNER_TEMP/gw"
+          echo "IBC_BIN=$RUNNER_TEMP/gw/jars" >> "$GITHUB_ENV"
+      - name: Compile and run the Java tests
+        run: ant test
+      - name: Build IBC.jar
+        run: ant jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IBC.jar
+          path: resources/IBC.jar
+
+  python:
+    needs: java
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.10", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: IBC.jar
+          path: jar
+      - name: Install and test
+        working-directory: python
+        run: |
+          python build_assets.py --jar ../jar/IBC.jar
+          python -m pip install -e ".[test]"
+          python -m pytest -q

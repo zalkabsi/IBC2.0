@@ -1,3 +1,34 @@
+# IBC2.0 - always-on Interactive Brokers, one command
+
+This is a maintained fork of [IBC](https://github.com/IbcAlpha/IBC) (retired upstream on 1 September 2026),
+extended so that a TWS / IB Gateway session stays logged in without you:
+
+```bash
+pip install ibc2
+ibc2 setup          # finds Gateway/TWS, stores your password in the OS keyring, sets safe defaults
+ibc2 start          # runs in the background; 'ibc2 install-service' starts it at every login
+```
+
+or, on a headless server, `docker compose -f docker/docker-compose.yml up -d --build`
+(see [docker/README.md](docker/README.md)).
+
+| Problem algo traders hit | What this fork does |
+|---|---|
+| Weekly forced 2FA login arrives while you are away | Alerts (Telegram / Discord / e-mail / webhook) when approval is needed and before it is due |
+| Gateway stalls on a new pop-up IBC has never seen | Detects and reports the window; fix it with a one-line rule in `dialogrules.txt`, no recompiling |
+| `AutoRestartTime=2:00 PM` silently ignored, causing a mid-session logoff | Lenient time parsing; sensible default restart time for your time zone |
+| Wrong 2FA device / passkey chosen | Device matched by name (case-insensitive, partial if unambiguous); lists the devices when none match |
+| Gateway frozen but port still open | Watchdog does a real API handshake and restarts it |
+| Config errors disappeared into `/dev/null` | JVM errors now reach the log |
+| Fiddly install, version mismatches, plaintext passwords | `ibc2 setup` / `ibc2 doctor`, OS keyring, Docker image |
+| API client in another container cannot connect | New `AllowLocalhostOnly` setting |
+
+IBKR requires a fresh second-factor login about once a week; **no tool can remove that, and this one does
+not try**. See [python/README.md](python/README.md) for details, security notes and the full command list.
+The original IBC documentation follows unchanged.
+
+---
+
 ## PROJECT RETIREMENT
 
 >**This project has been retired, as of 1 September 2026. By 'retired', I mean that

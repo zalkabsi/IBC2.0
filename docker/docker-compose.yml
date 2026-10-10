@@ -1,0 +1,44 @@
+# Headless IB Gateway with auto-login, watchdog and alerts.
+#
+#   1. echo -n 'your-ibkr-password' > secrets/ibkr_password.txt   (keep it out of git)
+#   2. cp docker/.env.example .env  and edit it
+#   3. docker compose -f docker/docker-compose.yml up -d --build
+#
+# Start with IBC2_MODE=paper. Your bot connects to 127.0.0.1:4002 (paper) / 4001 (live).
+
+services:
+  ibc2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: ibc2:latest
+    restart: unless-stopped
+    init: true
+    environment:
+      IBC2_USERNAME: ${IBC2_USERNAME:?set IBC2_USERNAME in .env}
+      IBC2_MODE: ${IBC2_MODE:-paper}
+      IBC2_PASSWORD_FILE: /run/secrets/ibkr_password
+      # alerts - set whichever you use (all optional)
+      IBC2_TELEGRAM_TOKEN: ${IBC2_TELEGRAM_TOKEN:-}
+      IBC2_TELEGRAM_CHAT_ID: ${IBC2_TELEGRAM_CHAT_ID:-}
+      IBC2_DISCORD_WEBHOOK: ${IBC2_DISCORD_WEBHOOK:-}
+      IBC2_WEBHOOK_URL: ${IBC2_WEBHOOK_URL:-}
+      TZ: ${TZ:-America/New_York}
+    secrets:
+      - ibkr_password
+    ports:
+      # bound to localhost on the host: the IB API has no encryption or strong authentication
+      - "127.0.0.1:4001:4001"
+      - "127.0.0.1:4002:4002"
+      # - "127.0.0.1:5900:5900"   # VNC (also set VNC_PASSWORD_FILE) - to click through a dialog by hand
+    volumes:
+      - ibc2-home:/home/ibc2/.ibc2
+      - gateway-settings:/home/ibc2/gateway-settings
+
+secrets:
+  ibkr_password:
+    file: ../secrets/ibkr_password.txt
+
+volumes:
+  ibc2-home:
+  gateway-settings:

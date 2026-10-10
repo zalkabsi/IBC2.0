@@ -7,3 +7,17 @@ makedocs/*/*.aux
 makedocs/*/*.log
 makedocs/*/*.tex
 .*
+
+# Python package build products
+python/src/ibc2/_ibc/
+python/dist/
+python/.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+
+# never commit secrets
+!docker/.env.example
+.env
+secrets/
+!.github/
