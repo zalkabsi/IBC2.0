@@ -1,9 +1,7 @@
 ---
 mainfont: Arial
-mainfontoptions: BoldFont=Arial Bold
-mainfontoptions: ItalicFont=Arial Italic
-mainfontoptions: BoldItalicFont=Arial Bold Italic
 fontsize: 11pt
-geometry: margin=25mm
-documentclass: extarticle
+margin:
+  x: 25mm
+  y: 25mm
 ---
