@@ -10,6 +10,8 @@
 # ---- stage 1: build IBC.jar and the ibc2 wheel --------------------------------------------------
 FROM debian:bookworm-slim AS build
 ARG GATEWAY_URL=https://download2.interactivebrokers.com/installers/ibgateway/stable-standalone/ibgateway-stable-standalone-linux-x64.sh
+# SHA-256 of the installer; set it (with a versioned GATEWAY_URL) so two builds cannot silently differ
+ARG GATEWAY_SHA256=
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl ant openjdk-17-jdk-headless python3 python3-venv python3-pip \
     && rm -rf /var/lib/apt/lists/*
@@ -17,6 +19,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Download and install Gateway into a scratch dir; we only need its jars to compile IBC,
 # and the whole install is copied to the final image.
 RUN curl -fsSL "$GATEWAY_URL" -o /tmp/ibgateway.sh \
+    && echo "Gateway installer sha256: $(sha256sum /tmp/ibgateway.sh | cut -d' ' -f1)" \
+    && if [ -n "$GATEWAY_SHA256" ]; then echo "$GATEWAY_SHA256  /tmp/ibgateway.sh" | sha256sum -c -; fi \
     && chmod +x /tmp/ibgateway.sh \
     && /tmp/ibgateway.sh -q -dir /tmp/gw \
     && ls /tmp/gw/jars | head -3

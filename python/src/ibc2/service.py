@@ -85,7 +85,7 @@ def launchd_plist(python: str, home: Path) -> str:
 
 
 def _run(cmd: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
+    return subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)  # noqa: S603
 
 
 def install() -> str:

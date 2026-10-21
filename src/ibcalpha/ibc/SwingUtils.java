@@ -264,7 +264,8 @@ class SwingUtils {
         String s = "";
         while (iter.hasNext()) {
             Component component = iter.next();
-            if (component instanceof JTextComponent) {
+            // never collect a password field: this text goes to the log, the event log and alerts
+            if (component instanceof JTextComponent && !(component instanceof JPasswordField)) {
                 try {
                     String content = ((JTextComponent)component).getText();
                     if (s.length() != 0) s += NEWLINE;

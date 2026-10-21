@@ -254,6 +254,7 @@ class Supervisor:
     def start_ibc(self, install: Install) -> None:
         g = self.settings["gateway"]
         password = credentials.get_password(g["username"])
+        self.alerter.add_secret(password)
         cfg = config_mod.write_runtime_config(self.settings, g["username"], password)
         cmd = launcher.build_command(self.settings, install, cfg)
         self.tail = EventTail(paths.events_file())

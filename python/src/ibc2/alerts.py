@@ -29,6 +29,17 @@ class Alerter:
         self._clock = clock
         self._last: dict[str, float] = {}
         self._out = out or sys.stderr
+        self._secrets: set[str] = set()
+
+    def add_secret(self, value: str) -> None:
+        """Never let *value* (e.g. the IBKR password) appear in an alert or the console."""
+        if value:
+            self._secrets.add(value)
+
+    def scrub(self, text: str) -> str:
+        for secret in sorted(self._secrets, key=len, reverse=True):
+            text = text.replace(secret, "***")
+        return text
 
     def channels(self) -> list[str]:
         c = self.cfg
@@ -51,6 +62,7 @@ class Alerter:
             if last is not None and now - last < self.min_interval:
                 return False
             self._last[key] = now
+        title, message = self.scrub(title), self.scrub(message)
         print(f"[ibc2 {level.upper()}] {title}: {message}", file=self._out, flush=True)
         for name in self.channels():
             try:

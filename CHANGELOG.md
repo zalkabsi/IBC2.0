@@ -1,6 +1,10 @@
 # Changelog
 
 ## Unreleased
+- Security: password fields are no longer collected as window text (`SwingUtils.getTexts`), so they cannot reach the
+  log, the event log or alerts; `ibc2` also removes the password from every alert (needs a rebuilt `IBC.jar` for the Java part).
+- Windows: the launch script starts without a console window (`CREATE_NO_WINDOW`); every helper command gets a null stdin.
+- Docker: `GATEWAY_SHA256` build argument verifies the Gateway installer; the build prints its checksum.
 - Running bare `ibc2` now guides first-time setup, starts the watchdog, and offers automatic startup at sign-in.
 - Quick-start and CLI messages document `ibc2 stop` and `ibc2 uninstall-service` for stopping and disabling auto-start.
 

@@ -30,8 +30,8 @@ def _pid_alive(pid: int) -> bool:
     if pid <= 0:
         return False
     if os.name == "nt":
-        out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True, text=True,
-                             check=False).stdout
+        out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH"], stdin=subprocess.DEVNULL,
+                             capture_output=True, text=True, check=False).stdout
         return str(pid) in out
     try:
         os.kill(pid, 0)
@@ -238,7 +238,8 @@ def cmd_stop(_: argparse.Namespace) -> int:
         time.sleep(0.5)
     print("Supervisor did not exit in time; terminating it.", file=sys.stderr)
     if os.name == "nt":
-        subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], capture_output=True, check=False)
+        subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], stdin=subprocess.DEVNULL, capture_output=True,
+                       check=False)
     else:
         os.kill(pid, 15)
     return 1

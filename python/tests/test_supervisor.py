@@ -213,3 +213,36 @@ def test_event_tail_survives_missing_and_truncated_file():
     assert tail.poll() == []  # truncation is noticed
     path.write_text(json.dumps({"type": "Y"}) + "\n")
     assert [e["type"] for e in tail.poll()] == ["Y"]
+
+
+def test_alerter_scrubs_registered_secret_from_title_and_message():
+    import io
+
+    out = io.StringIO()
+    alerter = Alerter({}, out=out)
+    delivered = []
+    alerter.channels = lambda: ["fake"]
+    alerter._send_fake = lambda title, message, level: delivered.append((title, message))
+    alerter.add_secret("hunter2pass")
+    alerter.send("window hunter2pass", "Login\nhunter2pass\nOK")
+    assert delivered == [("window ***", "Login\n***\nOK")]
+    assert "hunter2pass" not in out.getvalue()
+
+
+def test_start_ibc_registers_password_with_alerter(monkeypatch):
+    sv, rec, _ = make()
+    monkeypatch.setattr(sup_mod.credentials, "get_password", lambda user: "s3cret-pw")
+    monkeypatch.setattr(sup_mod.config_mod, "write_runtime_config", lambda *a, **k: paths.runtime_config())
+    monkeypatch.setattr(sup_mod.launcher, "build_command", lambda *a, **k: ["true"])
+
+    class FakeProc:
+        stdout = iter(())
+        pid = 0
+
+        def poll(self):
+            return None
+
+    monkeypatch.setattr(sup_mod.launcher, "popen", lambda cmd: FakeProc())
+    monkeypatch.setattr(sup_mod, "LogPump", lambda stream, logs: type("P", (), {"start": lambda self: None})())
+    sv.start_ibc(install=None)
+    assert rec.scrub("detail s3cret-pw") == "detail ***"

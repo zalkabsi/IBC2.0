@@ -55,7 +55,8 @@ def popen(cmd: list[str]) -> subprocess.Popen:
     kwargs: dict[str, Any] = dict(stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                                   text=True, encoding="utf-8", errors="replace", bufsize=1)
     if os.name == "nt":
-        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+        # no console window for the .bat when ibc2 runs under pythonw (TWS/Gateway's own window still shows)
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
     else:
         kwargs["start_new_session"] = True
     return subprocess.Popen(cmd, **kwargs)  # noqa: S603 - fixed argv, no shell
@@ -67,7 +68,8 @@ def kill_tree(proc: subprocess.Popen, *, grace: float = 10.0) -> None:
         return
     try:
         if os.name == "nt":
-            subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True, check=False)
+            subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)], stdin=subprocess.DEVNULL,
+                           capture_output=True, check=False)
         else:
             import signal
 
