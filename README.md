@@ -11,10 +11,14 @@ service installation and a Docker image.
 
 ```bash
 pip install ibc2
-ibc2 setup          # finds Gateway/TWS, stores your password in the OS keyring, sets safe defaults
-ibc2 start          # runs in the background
-ibc2 install-service  # optional: start automatically at every login / boot
+ibc2                # first run: guided setup, then starts the watchdog in the background
+ibc2 stop           # stop the watchdog and close TWS/Gateway
 ```
+
+The first run finds an offline TWS / Gateway installation, asks for your trading mode and IBKR login,
+stores the password in the OS keyring, and offers to start ibc2 automatically when you sign in. Later,
+running `ibc2` starts the configured watchdog. Use `ibc2 setup` to change settings or `ibc2 status` to
+check the session. `ibc2 uninstall-service` removes the automatic sign-in startup.
 
 On a headless server or VPS use Docker instead:
 
@@ -71,7 +75,7 @@ window, exit) to `EventLogFile`; `ibc2` reads them to alert you.
 ## Project status
 
 - Java: builds on JDK 17; unit tests run with `ant test`.
-- `ibc2`: 47 automated tests on Linux, Windows and macOS (CI). Verified manually against a real TWS 1043 on
+- `ibc2`: 54 automated tests on Linux, Windows and macOS (CI). Verified manually against a real TWS 1043 on
   Windows and a real IB Gateway 1050 in Docker, in both cases up to the login window, using blank credentials.
 - **Not yet verified against a live account:** the 2FA alert flow, dialog rules on a real IBKR pop-up, and
   alert delivery on each channel. Treat the first week as a trial on a paper account.

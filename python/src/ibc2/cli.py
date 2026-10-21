@@ -133,7 +133,11 @@ def cmd_setup(args: argparse.Namespace) -> int:
     print(f"\nSettings saved to {paths.settings_file()}\n")
     checks = doctor.run_checks(settings_mod.load())
     print(doctor.format_checks(checks))
-    print("\nNext: 'ibc2 start' to run in the background, 'ibc2 install-service' to start at every login.")
+    if getattr(args, "start_after_setup", False):
+        print("\nSetup complete. Starting ibc2 now.")
+    else:
+        print("\nSetup complete. Run 'ibc2' to start, 'ibc2 stop' to close TWS/Gateway, or "
+              "'ibc2 uninstall-service' to remove automatic startup.")
     return 1 if doctor.has_failures(checks) else 0
 
 
@@ -181,10 +185,43 @@ def cmd_start(_: argparse.Namespace) -> int:
     for _i in range(20):
         time.sleep(0.5)
         if _supervisor_pid():
-            print("ibc2 started in the background. 'ibc2 status' shows progress; 'ibc2 logs -f' follows the log.")
+            print("ibc2 started in the background. Use 'ibc2 status' to check it, 'ibc2 logs -f' to follow logs, "
+                  "or 'ibc2 stop' to close TWS/Gateway.")
             return 0
     print("ibc2 did not start; see " + str(paths.logs_dir() / "ibc2.log"), file=sys.stderr)
     return 1
+
+
+def cmd_default(_: argparse.Namespace) -> int:
+    """First-run setup followed by a start; later invocations start directly."""
+    if _supervisor_pid():
+        print("ibc2 is already running. See 'ibc2 status'.")
+        return 0
+
+    s = settings_mod.load()
+    username = s["gateway"]["username"]
+    configured = bool(username and credentials.has_password(username))
+    if not configured:
+        print("Welcome to ibc2. Let’s set up your Interactive Brokers connection.")
+        setup_args = argparse.Namespace(
+            app=None,
+            mode=None,
+            username=None,
+            password_stdin=False,
+            non_interactive=False,
+            start_after_setup=True,
+        )
+        result = cmd_setup(setup_args)
+        if result:
+            return result
+
+        if _ask("Start ibc2 automatically when you sign in? (Y/n)", "y").lower() in ("y", "yes"):
+            try:
+                print(service.install())
+            except RuntimeError as e:
+                print(f"Automatic startup could not be installed: {e}", file=sys.stderr)
+
+    return cmd_start(argparse.Namespace())
 
 
 def cmd_stop(_: argparse.Namespace) -> int:
@@ -193,7 +230,7 @@ def cmd_stop(_: argparse.Namespace) -> int:
         print("ibc2 is not running.")
         return 0
     paths.stop_flag().write_text("stop")
-    print("Stopping (Gateway is closed cleanly; this can take up to 40 seconds)...")
+    print("Stopping (TWS/Gateway is closed cleanly; this can take up to 40 seconds)...")
     for _i in range(90):
         if not _pid_alive(pid):
             print("Stopped.")
@@ -302,7 +339,7 @@ def cmd_paths(_: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="ibc2", description="Keep Interactive Brokers TWS / IB Gateway logged in, always on.")
     p.add_argument("--version", action="version", version=f"ibc2 {__version__}")
-    sub = p.add_subparsers(dest="command", required=True)
+    sub = p.add_subparsers(dest="command")
 
     sp = sub.add_parser("setup", help="guided first-time setup")
     sp.add_argument("--app", choices=["gateway", "tws"])
@@ -342,6 +379,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        return int(args.func(args) or 0)
+        func = getattr(args, "func", cmd_default)
+        return int(func(args) or 0)
     except KeyboardInterrupt:
         return 130

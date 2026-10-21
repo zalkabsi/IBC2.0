@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- Running bare `ibc2` now guides first-time setup, starts the watchdog, and offers automatic startup at sign-in.
+- Quick-start and CLI messages document `ibc2 stop` and `ibc2 uninstall-service` for stopping and disabling auto-start.
+
 ## 0.1.0 / IBC 3.25.0 - first release of this fork
 
 ### New: `ibc2` (Python, `pip install ibc2`)

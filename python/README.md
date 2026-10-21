@@ -19,9 +19,13 @@ algo-trading setups actually need:
 
 ```
 pip install ibc2
-ibc2 setup
-ibc2 start
+ibc2
 ```
+
+On first run, `ibc2` opens the guided setup, finds an offline TWS / Gateway installation, asks for paper or
+live mode and your IBKR login, stores the password in the OS keyring, then starts the watchdog in the
+background. It also offers to start automatically at sign-in. Run `ibc2` again later to start the saved
+configuration; use `ibc2 setup` to change it.
 
 ## What it can and cannot do
 
@@ -42,14 +46,17 @@ exactly when, instead of a silent outage.
 
 | Command | What it does |
 |---|---|
+| `ibc2` | First run: guided setup and start; later runs start the saved configuration |
 | `ibc2 setup` | Guided setup: finds Gateway/TWS, asks mode (paper/live), username, password (keyring), alerts |
 | `ibc2 doctor` | Checks everything and says how to fix each problem |
-| `ibc2 start` / `stop` | Run in the background / close Gateway cleanly |
+| `ibc2 start` | Run the watchdog in the background |
+| `ibc2 stop` | Stop the watchdog and close TWS/Gateway cleanly |
 | `ibc2 run` | Run in the foreground (what services use) |
 | `ibc2 restart` | Restart Gateway in place without a new 2FA |
 | `ibc2 status [--json]` | Is it running, is the API answering, when is the next forced re-login |
 | `ibc2 logs [-f]` | Show / follow the IBC log |
-| `ibc2 install-service` | Start automatically at login (`uninstall-service` to remove) |
+| `ibc2 install-service` | Start automatically at login |
+| `ibc2 uninstall-service` | Remove automatic startup at login |
 | `ibc2 test-alert` | Send a test alert |
 
 ## Alerts

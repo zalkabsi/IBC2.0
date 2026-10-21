@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag like v0.1.0 to publish. Publishing uses PyPI "trusted publishing" (no API token is stored
+# Push a tag like v0.1.1 to publish. Publishing uses PyPI "trusted publishing" (no API token is stored
 # in the repository): configure the project on pypi.org first, see python/RELEASING.md.
 on:
   push:
@@ -28,9 +28,12 @@ jobs:
       - name: Build the wheel and sdist
         working-directory: python
         run: |
-          python -m pip install build
           python build_assets.py --jar ../resources/IBC.jar
+          python -m pip install build twine
+          python -m pip install -e ".[test]"
+          python -m pytest -q
           python -m build
+          python -m twine check dist/*
       - uses: actions/upload-artifact@v4
         with:
           name: dist
